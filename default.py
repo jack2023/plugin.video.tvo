@@ -172,7 +172,7 @@ def getShows(gsurl,catname):
 
 
 def getLink(vid,vidname):
-            url = 'https://secure.brightcove.com/services/viewer/htmlFederated?&width=859&height=482&flashID=BrightcoveExperience&bgcolor=%23FFFFFF&playerID=756015080001&playerKey=AQ~~,AAAABDk7A3E~,xYAUE9lVY9-LlLNVmcdybcRZ8v_nIl00&isVid=true&isUI=true&dynamicStreaming=true&%40videoPlayer='+vid+'&secureConnections=true&secureHTMLConnections=true'
+            url = 'https://secure.brightcove.com/services/viewer/htmlFederated?&width=1280&height=720&flashID=BrightcoveExperience&bgcolor=%23FFFFFF&playerID=756015080001&playerKey=AQ~~,AAAABDk7A3E~,xYAUE9lVY9-LlLNVmcdybcRZ8v_nIl00&isVid=true&isUI=true&dynamicStreaming=true&%40videoPlayer='+vid+'&secureConnections=true&secureHTMLConnections=true'
             html = getRequest(url)
             a = re.compile('experienceJSON = (.+?)\};').search(html).group(1)
             a = a+'}'
@@ -196,6 +196,34 @@ def getLink(vid,vidname):
                      except:
                         u = ''
                  xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, xbmcgui.ListItem(path=u))
+
+                 try:
+                     suburl = a['data']['programmedContent']['videoPlayer']['mediaDTO']['captions'][0]['URL']
+                 except:
+                     suburl = ''
+
+                 if (suburl != "") and ('dfxp' in suburl) and (addon.getSetting('sub_enable') == "true"):
+                    profile = addon.getAddonInfo('profile').decode(UTF8)
+                    subfile = xbmc.translatePath(os.path.join(profile, 'TVOSubtitles.srt'))
+                    prodir  = xbmc.translatePath(os.path.join(profile))
+                    if not os.path.isdir(prodir):
+                       os.makedirs(prodir)
+
+                    pg = getRequest(suburl)
+                    if pg != "":
+                      ofile = open(subfile, 'w+')
+                      captions = re.compile('<p begin="(.+?)" end="(.+?)">(.+?)</p>').findall(pg)
+                      idx = 1
+                      for cstart, cend, caption in captions:
+                        cstart = cstart.replace('.',',')
+                        cend   = cend.replace('.',',').split('"',1)[0]
+                        caption = caption.replace('<br/>','\n').replace('&gt;','>').replace('&apos;',"'").replace('&quot;','"')
+                        ofile.write( '%s\n%s --> %s\n%s\n\n' % (idx, cstart, cend, caption))
+                        idx += 1
+                      ofile.close()
+                      xbmc.sleep(5000)
+                      xbmc.Player().setSubtitles(subfile)
+
             except:
                  xbmc.executebuiltin('XBMC.Notification("%s", "%s", %s)' % ( __addonname__, __language__(30011), 10000) )
 
